@@ -2,7 +2,8 @@ class GitHub {
   constructor() {
     this.token = null;
     this.apiBase = "https://api.github.com";
-    this.lastEventTimestamp = Date.now();
+    this.lastEventId = null;
+    this.lastEventTimestamp = null;
   }
 
   async fetchFollowers() {
@@ -18,6 +19,17 @@ class GitHub {
   async fetchEventsOfUser(username) {
     const response = await fetch(`${this.apiBase}/users/${username}/events`);
 
+    if (response.status === 403) {
+      const resetTime = response.headers.get("X-RateLimit-Reset");
+      const currentTime = Math.floor(Date.now() / 1000);
+      const waitTime = resetTime - currentTime;
+
+      throw new Error(
+        `Rate limit exceeded. Try again in ${waitTime} seconds.`,
+        { cause: "wait-time" }
+      );
+    }
+
     return await response.json();
   }
 
@@ -26,12 +38,17 @@ class GitHub {
       (event) =>
         event.type === "CreateEvent" &&
         event.payload.ref_type === "repository" &&
-        new Date(event.created_at).getTime() > this.lastEventTimestamp
+        (!this.lastEventId || event.id > this.lastEventId)
     );
   }
 
-  updateLastEventTimestamp() {
-    this.lastEventTimestamp = Date.now();
+  async retrieveNewReposOfUser(username) {
+    const events = await this.fetchEventsOfUser(username);
+    return this.filterRepoCreationEvents(events);
+  }
+
+  updateLastEventId(eventId) {
+    this.lastEventId = eventId;
   }
 
   registerToken(token) {
