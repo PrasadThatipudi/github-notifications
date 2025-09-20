@@ -11,7 +11,7 @@ const greatest = (...values) => {
 const serveNotifications = async (ctx) => {
   const gitHub = ctx.get("gitHub");
 
-  if (!gitHub.token)
+  if (!gitHub.isTokenAvailable())
     return ctx.json({ message: "Unauthorized: No token provided" }, 401);
 
   const followers = await gitHub.fetchFollowers();
@@ -44,22 +44,6 @@ const serveNotifications = async (ctx) => {
   return ctx.json({ newRepositories });
 };
 
-const saveAuthorizationKey = (ctx) => {
-  const authHeader = ctx.req.header("Authorization");
-
-  if (!authHeader) return ctx.json({ message: "Authorization missing" }, 400);
-
-  const [tokenType, token] = authHeader.split(" ");
-
-  if (tokenType !== "Bearer" || !token)
-    return ctx.json({ message: "Invalid Authorization format" }, 400);
-
-  const gitHub = ctx.get("gitHub");
-  gitHub.registerToken(token);
-
-  return ctx.json({ message: "Authenticated successfully" });
-};
-
 const setAppContext = (appContext) => (ctx, next) => {
   ctx.set("gitHub", appContext.gitHub);
 
@@ -70,7 +54,6 @@ const createApp = (appContext) => {
   const app = new Hono();
 
   app.use(setAppContext(appContext));
-  app.post("/start", saveAuthorizationKey);
   app.get("/notifications", serveNotifications);
 
   return app;

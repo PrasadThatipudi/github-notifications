@@ -1,15 +1,16 @@
 class GitHub {
-  constructor() {
-    this.token = null;
-    this.apiBase = "https://api.github.com";
-    this.lastEventId = null;
-    this.lastEventTimestamp = null;
+  #token = null;
+  #lastEventId = null;
+  #apiBase = "https://api.github.com";
+
+  constructor(token) {
+    this.#token = token;
   }
 
   async fetchFollowers() {
-    const response = await fetch(`${this.apiBase}/user/followers`, {
+    const response = await fetch(`${this.#apiBase}/user/followers`, {
       headers: {
-        Authorization: `Bearer ${this.token}`,
+        Authorization: `Bearer ${this.#token}`,
       },
     });
 
@@ -17,7 +18,7 @@ class GitHub {
   }
 
   async fetchEventsOfUser(username) {
-    const response = await fetch(`${this.apiBase}/users/${username}/events`);
+    const response = await fetch(`${this.#apiBase}/users/${username}/events`);
 
     if (response.status === 403) {
       const resetTime = response.headers.get("X-RateLimit-Reset");
@@ -38,7 +39,7 @@ class GitHub {
       (event) =>
         event.type === "CreateEvent" &&
         event.payload.ref_type === "repository" &&
-        (!this.lastEventId || event.id > this.lastEventId)
+        (!this.#lastEventId || event.id > this.#lastEventId)
     );
   }
 
@@ -47,12 +48,12 @@ class GitHub {
     return this.filterRepoCreationEvents(events);
   }
 
-  updateLastEventId(eventId) {
-    this.lastEventId = eventId;
+  isTokenAvailable() {
+    return this.#token !== null || this.#token !== undefined;
   }
 
-  registerToken(token) {
-    this.token = token;
+  updateLastEventId(eventId) {
+    this.#lastEventId = eventId;
   }
 }
 
